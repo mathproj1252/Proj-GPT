@@ -3,55 +3,314 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPT-2 Tiny Чат-бот</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- Используем правильный CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1/dist/transformers.min.js"></script>
+    <title>GPT-2 Чат-бот</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+        .container {
+            max-width: 100%;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .chat-container {
+            height: 60vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+        }
+        .user-message {
+            justify-content: flex-end;
+        }
+        .bot-message {
+            justify-content: flex-start;
+        }
+        .message-content {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+        .user-message .message-content {
+            background: #4f46e5;
+            color: white;
+        }
+        .bot-message .message-content {
+            background: white;
+            border: 1px solid #e5e7eb;
+        }
+        .input-container {
+            padding: 15px;
+            border-top: 1px solid #e5e7eb;
+            background: white;
+        }
+        .input-wrapper {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        #user-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px 20px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .load-btn {
+            width: 100%;
+            background: #10b981;
+            margin-top: 10px;
+        }
+        .status {
+            padding: 12px;
+            background: #fef3c7;
+            text-align: center;
+            font-size: 14px;
+            border-top: 1px solid #fcd34d;
+        }
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🤖 GPT-2 Tiny Чат-бот</h1>
-            <p>Полностью в браузере · Без бэкенда</p>
+            <h1>🤖 GPT-2 Чат-бот</h1>
+            <p>Работает в браузере</p>
         </header>
 
         <div class="chat-container">
             <div id="chat-messages" class="chat-messages">
                 <div class="message bot-message">
                     <div class="message-content">
-                        Привет! Я GPT-2 Tiny, работающий прямо в твоём браузере. Нажмите кнопку ниже для загрузки модели...
+                        Привет! Нажмите кнопку ниже для загрузки модели GPT-2.
                     </div>
                 </div>
             </div>
             
             <div class="input-container">
                 <div class="input-wrapper">
-                    <input 
-                        type="text" 
-                        id="user-input" 
-                        placeholder="Введите ваше сообщение..." 
-                    >
-                    <button id="send-btn">
-                        Отправить
-                    </button>
+                    <input type="text" id="user-input" placeholder="Введите сообщение..." disabled>
+                    <button id="send-btn" disabled>Отправить</button>
                 </div>
-                <button id="load-model-btn" class="load-btn">
-                    🚀 Загрузить модель GPT-2 Tiny
-                </button>
-                <div class="controls">
-                    <label>
-                        <input type="range" id="max-tokens" min="10" max="200" value="50">
-                        Макс. токенов: <span id="tokens-value">50</span>
-                    </label>
-                </div>
+                <button id="load-btn" class="load-btn">🚀 Загрузить модель GPT-2</button>
             </div>
         </div>
 
-        <div class="status" id="status">
-            ℹ️ Нажмите кнопку "Загрузить модель" для начала
-        </div>
+        <div class="status" id="status">Готов к работе</div>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        // Ждем полной загрузки страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            // Основные переменные
+            let pipeline = null;
+            let isModelLoading = false;
+            let isGenerating = false;
+            
+            // Элементы DOM
+            const chatMessages = document.getElementById('chat-messages');
+            const userInput = document.getElementById('user-input');
+            const sendBtn = document.getElementById('send-btn');
+            const loadBtn = document.getElementById('load-btn');
+            const status = document.getElementById('status');
+            
+            // Функция для добавления сообщения в чат
+            function addMessage(sender, text) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}-message`;
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                contentDiv.textContent = text;
+                
+                messageDiv.appendChild(contentDiv);
+                chatMessages.appendChild(messageDiv);
+                
+                // Прокрутка вниз
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            // Функция обновления статуса
+            function updateStatus(text, isLoading = false) {
+                if (isLoading) {
+                    status.innerHTML = `<span class="loading"></span> ${text}`;
+                } else {
+                    status.textContent = text;
+                }
+            }
+            
+            // Функция загрузки модели
+            async function loadModel() {
+                if (isModelLoading) return;
+                
+                isModelLoading = true;
+                loadBtn.disabled = true;
+                loadBtn.innerHTML = '<span class="loading"></span> Загрузка...';
+                updateStatus('Загрузка Transformers.js...', true);
+                
+                try {
+                    // Проверяем, загружена ли библиотека
+                    if (typeof transformers === 'undefined') {
+                        updateStatus('Загрузка библиотеки...', true);
+                        // Библиотека должна быть загружена через CDN в head
+                        throw new Error('Библиотека Transformers.js не загружена');
+                    }
+                    
+                    updateStatus('Скачиваем модель GPT-2 (≈150MB)...', true);
+                    addMessage('bot', 'Начинаю загрузку модели GPT-2. Это займет несколько минут...');
+                    
+                    // Используем более легкую модель для мобильных устройств
+                    pipeline = await transformers.pipeline(
+                        'text-generation',
+                        'Xenova/gpt2', // Базовая модель GPT-2
+                        {
+                            device: 'cpu',
+                            quantized: true,
+                            progress_callback: (data) => {
+                                if (data.status === 'downloading') {
+                                    const percent = (data.progress * 100).toFixed(1);
+                                    updateStatus(`Загрузка модели: ${percent}%`, true);
+                                }
+                            }
+                        }
+                    );
+                    
+                    updateStatus('✅ Модель загружена!');
+                    addMessage('bot', 'Отлично! Модель GPT-2 успешно загружена. Теперь я могу отвечать на ваши сообщения!');
+                    
+                    // Активируем интерфейс
+                    sendBtn.disabled = false;
+                    userInput.disabled = false;
+                    userInput.placeholder = 'Введите ваше сообщение...';
+                    loadBtn.style.display = 'none';
+                    userInput.focus();
+                    
+                } catch (error) {
+                    console.error('Ошибка:', error);
+                    updateStatus('❌ Ошибка загрузки модели');
+                    addMessage('bot', 'Не удалось загрузить модель. Возможные причины:\n• Нет интернета\n• Браузер не поддерживает WebAssembly\n• Открыт через file:// протокол\n\nПопробуйте использовать HTTP сервер.');
+                    
+                    loadBtn.disabled = false;
+                    loadBtn.textContent = '🔄 Попробовать снова';
+                }
+                
+                isModelLoading = false;
+            }
+            
+            // Функция отправки сообщения
+            async function sendMessage() {
+                const message = userInput.value.trim();
+                if (!message || isGenerating || !pipeline) return;
+                
+                // Добавляем сообщение пользователя
+                addMessage('user', message);
+                userInput.value = '';
+                sendBtn.disabled = true;
+                updateStatus('Генерация ответа...', true);
+                
+                isGenerating = true;
+                
+                try {
+                    // Генерируем ответ
+                    const output = await pipeline(message, {
+                        max_new_tokens: 100,
+                        temperature: 0.7,
+                        do_sample: true,
+                        pad_token_id: 50256
+                    });
+                    
+                    // Извлекаем сгенерированный текст
+                    let response = output[0].generated_text;
+                    
+                    // Убираем оригинальный промпт из ответа
+                    if (response.startsWith(message)) {
+                        response = response.slice(message.length).trim();
+                    }
+                    
+                    // Очищаем ответ
+                    response = response.split('\n')[0]; // Берем первую строку
+                    
+                    addMessage('bot', response);
+                    updateStatus('✅ Готово');
+                    
+                } catch (error) {
+                    console.error('Ошибка генерации:', error);
+                    addMessage('bot', 'Извините, произошла ошибка при генерации ответа.');
+                    updateStatus('❌ Ошибка генерации');
+                }
+                
+                isGenerating = false;
+                sendBtn.disabled = false;
+                userInput.focus();
+            }
+            
+            // Назначаем обработчики событий
+            loadBtn.addEventListener('click', loadModel);
+            sendBtn.addEventListener('click', sendMessage);
+            
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !isGenerating && pipeline) {
+                    sendMessage();
+                }
+            });
+            
+            // Информационное сообщение
+            updateStatus('Нажмите "Загрузить модель GPT-2" для начала');
+        });
+    </script>
+
+    <!-- Загружаем Transformers.js в конце body -->
+    <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1/dist/transformers.min.js"></script>
 </body>
-  </html>
+    </html>
