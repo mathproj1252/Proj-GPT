@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPT-2 Tiny Чат-бот</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Используем правильный CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1/dist/transformers.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 GPT-2 Tiny Чат-бот</h1>
+            <p>Полностью в браузере · Без бэкенда</p>
+        </header>
+
+        <div class="chat-container">
+            <div id="chat-messages" class="chat-messages">
+                <div class="message bot-message">
+                    <div class="message-content">
+                        Привет! Я GPT-2 Tiny, работающий прямо в твоём браузере. Нажмите кнопку ниже для загрузки модели...
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <input 
+                        type="text" 
+                        id="user-input" 
+                        placeholder="Введите ваше сообщение..." 
+                    >
+                    <button id="send-btn">
+                        Отправить
+                    </button>
+                </div>
+                <button id="load-model-btn" class="load-btn">
+                    🚀 Загрузить модель GPT-2 Tiny
+                </button>
+                <div class="controls">
+                    <label>
+                        <input type="range" id="max-tokens" min="10" max="200" value="50">
+                        Макс. токенов: <span id="tokens-value">50</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="status" id="status">
+            ℹ️ Нажмите кнопку "Загрузить модель" для начала
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+  </html>
